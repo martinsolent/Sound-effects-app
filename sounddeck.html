@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoundDeck</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0d0d0f;
+    --panel: #141418;
+    --card: #1c1c22;
+    --card-hover: #24242c;
+    --border: #2a2a35;
+    --accent: #ff4d00;
+    --accent2: #ff8c00;
+    --text: #e8e8f0;
+    --muted: #6b6b7e;
+    --active: #ff4d00;
+    --green: #00e676;
+    --blue: #2979ff;
+    --purple: #d500f9;
+    --yellow: #ffea00;
+    --cyan: #00e5ff;
+    --pink: #ff4081;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.4;
+  }
+
+  header {
+    padding: 14px 24px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 0 14px rgba(255,77,0,0.5);
+  }
+
+  .logo-text {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .logo-text span {
+    color: var(--accent);
+  }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .volume-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+  }
+
+  .volume-control label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .volume-control input[type=range] {
+    -webkit-appearance: none;
+    width: 100px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .volume-control input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(255,77,0,0.6);
+  }
+
+  #vol-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    min-width: 32px;
+  }
+
+  .stop-all-btn {
+    background: #2a1010;
+    border: 1px solid #5a2020;
+    color: #ff6060;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 7px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .stop-all-btn:hover {
+    background: #3a1515;
+    border-color: #ff4040;
+    box-shadow: 0 0 10px rgba(255,60,60,0.3);
+  }
+
+  .main {
+    flex: 1;
+    display: flex;
+    gap: 0;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 200px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 16px 0;
+    flex-shrink: 0;
+  }
+
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 16px 8px;
+  }
+
+  .page-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 16px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
+  }
+
+  .page-btn:hover {
+    background: var(--card);
+    color: var(--text);
+  }
+
+  .page-btn.active {
+    background: rgba(255, 77, 0, 0.08);
+    color: var(--accent);
+    border-left-color: var(--accent);
+  }
+
+  .page-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .sidebar-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 12px 16px;
+  }
+
+  .add-page-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: calc(100% - 32px);
+    margin: 0 16px;
+    padding: 8px 12px;
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .add-page-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Content area */
+  .content {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .page-title {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .page-subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 2px;
+  }
+
+  /* Deck grid */
+  .deck-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+    max-width: 900px;
+  }
+
+  /* Sound button */
+  .sound-btn {
+    position: relative;
+    aspect-ratio: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    transition: all 0.1s;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .sound-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .sound-btn:hover {
+    background: var(--card-hover);
+    border-color: rgba(255,255,255,0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  }
+
+  .sound-btn:active, .sound-btn.playing {
+    transform: scale(0.95) translateY(0);
+    box-shadow: none;
+  }
+
+  .sound-btn.playing {
+    border-color: var(--btn-color, var(--accent));
+    box-shadow: 0 0 0 2px rgba(var(--btn-color-rgb, 255,77,0), 0.3), inset 0 0 20px rgba(var(--btn-color-rgb, 255,77,0), 0.1);
+  }
+
+  .sound-btn.playing .btn-icon {
+    animation: pulse-icon 0.6s ease infinite alternate;
+  }
+
+  @keyframes pulse-icon {
+    from { transform: scale(1); }
+    to { transform: scale(1.15); }
+  }
+
+  .sound-btn.empty {
+    border-style: dashed;
+    opacity: 0.4;
+  }
+
+  .sound-btn.empty:hover {
+    opacity: 0.7;
+    border-color: var(--accent);
+  }
+
+  .btn-color-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--btn-color, var(--accent));
+    border-radius: 10px 10px 0 0;
+  }
+
+  .btn-icon {
+    font-size: 28px;
+    line-height: 1;
+    transition: transform 0.1s;
+  }
+
+  .btn-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    text-align: center;
+    color: var(--text);
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .btn-key {
+    position: absolute;
+    top: 6px;
+    right: 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--muted);
+    background: rgba(0,0,0,0.3);
+    border-radius: 3px;
+    padding: 1px 4px;
+    letter-spacing: 0;
+  }
+
+  .playing-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: var(--btn-color, var(--accent));
+    border-radius: 0 0 0 10px;
+    width: 0%;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 6px var(--btn-color, var(--accent));
+  }
+
+  .empty-plus {
+    font-size: 22px;
+    color: var(--muted);
+  }
+
+  /* Edit modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.open {
+    display: flex;
+  }
+
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    width: 400px;
+    max-width: 90vw;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.7);
+  }
+
+  .modal-title {
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    color: var(--text);
+  }
+
+  .modal-field {
+    margin-bottom: 16px;
+  }
+
+  .modal-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .modal-field input[type=text],
+  .modal-field select {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .modal-field input[type=text]:focus,
+  .modal-field select:focus {
+    border-color: var(--accent);
+  }
+
+  .modal-field select option {
+    background: var(--card);
+  }
+
+  .color-picker-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .color-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .color-swatch.selected {
+    border-color: white;
+    transform: scale(1.15);
+  }
+
+  .icon-picker-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .icon-option {
+    font-size: 22px;
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    background: var(--card);
+    border: 2px solid transparent;
+    transition: all 0.15s;
+    line-height: 1;
+  }
+
+  .icon-option:hover, .icon-option.selected {
+    border-color: var(--accent);
+    background: rgba(255,77,0,0.1);
+  }
+
+  .file-drop {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .file-drop:hover, .file-drop.dragover {
+    border-color: var(--accent);
+    background: rgba(255,77,0,0.05);
+  }
+
+  .file-drop-text {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .file-drop-text span {
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  .file-name-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--green);
+    margin-top: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .btn-save {
+    flex: 1;
+    background: var(--accent);
+    border: none;
+    color: white;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 11px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-save:hover {
+    background: #ff6620;
+    box-shadow: 0 4px 14px rgba(255,77,0,0.5);
+  }
+
+  .btn-cancel, .btn-delete {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 11px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-cancel:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+  .btn-delete {
+    color: #ff4040;
+    border-color: #3a1515;
+    background: #1a0808;
+  }
+
+  .btn-delete:hover {
+    background: #2a1010;
+    border-color: #ff4040;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--text);
+    z-index: 300;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+  }
+
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .context-menu {
+    position: fixed;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    z-index: 250;
+    min-width: 150px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+    display: none;
+  }
+
+  .context-menu.open { display: block; }
+
+  .ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--text);
+    transition: background 0.1s;
+  }
+
+  .ctx-item:hover { background: var(--card-hover); }
+  .ctx-item.danger { color: #ff6060; }
+  .ctx-item.danger:hover { background: #1a0808; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎛</div>
+    <div class="logo-text">Sound<span>Deck</span></div>
+  </div>
+  <div class="header-controls">
+    <div class="volume-control">
+      <label>VOL</label>
+      <input type="range" id="master-vol" min="0" max="100" value="80">
+      <span id="vol-display">80%</span>
+    </div>
+    <button class="stop-all-btn" onclick="stopAll()">■ STOP ALL</button>
+  </div>
+</header>
+
+<div class="main">
+  <div class="sidebar">
+    <div class="sidebar-label">Pages</div>
+    <div id="page-list"></div>
+    <div class="sidebar-divider"></div>
+    <button class="add-page-btn" onclick="addPage()">+ Add Page</button>
+  </div>
+
+  <div class="content">
+    <div class="page-header">
+      <div>
+        <div class="page-title" id="page-title">My Board</div>
+        <div class="page-subtitle" id="page-subtitle">0 sounds assigned</div>
+      </div>
+    </div>
+    <div class="deck-grid" id="deck-grid"></div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Configure Button</div>
+
+    <div class="modal-field">
+      <label>Label</label>
+      <input type="text" id="edit-label" placeholder="Button name...">
+    </div>
+
+    <div class="modal-field">
+      <label>Icon</label>
+      <div class="icon-picker-row" id="icon-picker"></div>
+    </div>
+
+    <div class="modal-field">
+      <label>Colour</label>
+      <div class="color-picker-row" id="color-picker"></div>
+    </div>
+
+    <div class="modal-field">
+      <label>Sound File</label>
+      <div class="file-drop" id="file-drop">
+        <div class="file-drop-text">Drop audio file here or <span onclick="document.getElementById('file-input').click()">browse</span></div>
+        <div class="file-name-display" id="file-name-display"></div>
+        <input type="file" id="file-input" accept="audio/*" style="display:none">
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-delete" id="btn-delete" onclick="deleteButton()">Delete</button>
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveButton()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Context menu -->
+<div class="context-menu" id="context-menu">
+  <div class="ctx-item" onclick="ctxEdit()">✏️ Edit</div>
+  <div class="ctx-item danger" onclick="ctxDelete()">🗑 Clear</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ICONS = ['🔊','🥁','🎸','🎹','🎺','🎷','🎵','🎶','🔔','🔕','💥','⚡','🌊','🔥','💫','❄️','🚀','🎭','😂','👏','🐱','🐶','🎮','⚠️','✅','❌','🎉','🌙','☀️','🌈'];
+const COLORS = ['#ff4d00','#ff8c00','#ffea00','#00e676','#00e5ff','#2979ff','#d500f9','#ff4081','#ffffff','#6b6b7e'];
+const COLOR_NAMES = ['Orange','Amber','Yellow','Green','Cyan','Blue','Purple','Pink','White','Grey'];
+const KEYS = ['Q','W','E','R','T','Y','U','I','O','P','A','S','D','F','G','H','J','K','L',';','Z','X','C','V','B','N','M',',','.','?'];
+const GRID_SIZE = 15;
+
+let state = {
+  pages: [
+    { id: 1, name: 'Main Board', color: '#ff4d00', buttons: Array(GRID_SIZE).fill(null) }
+  ],
+  currentPage: 0
+};
+
+let editingIndex = null;
+let editingAudioData = null;
+let contextIndex = null;
+let audioObjects = {};
+let progressIntervals = {};
+
+// Load from localStorage
+try {
+  const saved = localStorage.getItem('sounddeck');
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    state = parsed;
+  }
+} catch(e) {}
+
+function save() {
+  try { localStorage.setItem('sounddeck', JSON.stringify(state)); } catch(e) {}
+}
+
+function currentPage() { return state.pages[state.currentPage]; }
+
+function renderSidebar() {
+  const list = document.getElementById('page-list');
+  list.innerHTML = '';
+  state.pages.forEach((page, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn' + (i === state.currentPage ? ' active' : '');
+    btn.innerHTML = `<span class="page-dot" style="background:${page.color}"></span>${page.name}`;
+    btn.onclick = () => { state.currentPage = i; render(); };
+    list.appendChild(btn);
+  });
+}
+
+function renderGrid() {
+  const grid = document.getElementById('deck-grid');
+  const page = currentPage();
+  const assigned = page.buttons.filter(b => b !== null).length;
+  document.getElementById('page-title').textContent = page.name;
+  document.getElementById('page-subtitle').textContent = `${assigned} sound${assigned !== 1 ? 's' : ''} assigned · Press keys to trigger`;
+
+  grid.innerHTML = '';
+  page.buttons.forEach((btn, i) => {
+    const el = document.createElement('div');
+    el.className = 'sound-btn' + (btn ? '' : ' empty');
+    el.dataset.index = i;
+
+    if (btn) {
+      const colorRgb = hexToRgb(btn.color || '#ff4d00');
+      el.style.setProperty('--btn-color', btn.color || '#ff4d00');
+      el.style.setProperty('--btn-color-rgb', `${colorRgb.r},${colorRgb.g},${colorRgb.b}`);
+      el.innerHTML = `
+        <div class="btn-color-bar"></div>
+        <div class="btn-icon">${btn.icon || '🔊'}</div>
+        <div class="btn-label">${btn.label || 'Untitled'}</div>
+        <div class="btn-key">${KEYS[i] || ''}</div>
+        <div class="playing-bar" id="pb-${state.currentPage}-${i}"></div>
+      `;
+      el.onclick = (e) => { e.stopPropagation(); playSound(i); };
+    } else {
+      el.innerHTML = `<div class="empty-plus">+</div>`;
+      el.onclick = () => openModal(i);
+    }
+
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (btn) showContextMenu(e, i);
+    });
+
+    grid.appendChild(el);
+  });
+}
+
+function render() {
+  renderSidebar();
+  renderGrid();
+}
+
+// Audio
+function playSound(index) {
+  const page = currentPage();
+  const btn = page.buttons[index];
+  if (!btn || !btn.audioData) {
+    showToast('No audio file — right-click to edit');
+    return;
+  }
+
+  const key = `${state.currentPage}-${index}`;
+
+  // If already playing, stop it
+  if (audioObjects[key]) {
+    audioObjects[key].pause();
+    audioObjects[key].currentTime = 0;
+    delete audioObjects[key];
+    clearInterval(progressIntervals[key]);
+    delete progressIntervals[key];
+    const el = document.querySelector(`.sound-btn[data-index="${index}"]`);
+    if (el) el.classList.remove('playing');
+    const pb = document.getElementById(`pb-${key}`);
+    if (pb) pb.style.width = '0%';
+    return;
+  }
+
+  const vol = document.getElementById('master-vol').value / 100;
+  const audio = new Audio(btn.audioData);
+  audio.volume = vol;
+  audioObjects[key] = audio;
+
+  const el = document.querySelector(`.sound-btn[data-index="${index}"]`);
+  if (el) el.classList.add('playing');
+
+  audio.play().catch(() => showToast('Could not play audio'));
+
+  progressIntervals[key] = setInterval(() => {
+    if (!audio.duration) return;
+    const pct = (audio.currentTime / audio.duration) * 100;
+    const pb = document.getElementById(`pb-${key}`);
+    if (pb) pb.style.width = pct + '%';
+  }, 100);
+
+  audio.onended = () => {
+    if (el) el.classList.remove('playing');
+    clearInterval(progressIntervals[key]);
+    delete progressIntervals[key];
+    delete audioObjects[key];
+    const pb = document.getElementById(`pb-${key}`);
+    if (pb) pb.style.width = '0%';
+  };
+}
+
+function stopAll() {
+  Object.keys(audioObjects).forEach(key => {
+    if (audioObjects[key]) {
+      audioObjects[key].pause();
+      audioObjects[key].currentTime = 0;
+    }
+  });
+  audioObjects = {};
+  Object.values(progressIntervals).forEach(clearInterval);
+  progressIntervals = {};
+  document.querySelectorAll('.sound-btn.playing').forEach(el => el.classList.remove('playing'));
+  document.querySelectorAll('.playing-bar').forEach(pb => pb.style.width = '0%');
+}
+
+// Keyboard
+document.addEventListener('keydown', (e) => {
+  if (document.getElementById('modal-overlay').classList.contains('open')) return;
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  const key = e.key.toUpperCase();
+  const index = KEYS.indexOf(key);
+  if (index !== -1 && index < GRID_SIZE) {
+    playSound(index);
+  }
+});
+
+// Volume
+document.getElementById('master-vol').oninput = function() {
+  document.getElementById('vol-display').textContent = this.value + '%';
+  Object.values(audioObjects).forEach(a => { a.volume = this.value / 100; });
+};
+
+// Modal
+function openModal(index) {
+  editingIndex = index;
+  editingAudioData = null;
+  const page = currentPage();
+  const btn = page.buttons[index] || {};
+
+  document.getElementById('modal-title').textContent = btn.label ? 'Edit Button' : 'Add Sound';
+  document.getElementById('edit-label').value = btn.label || '';
+  document.getElementById('file-name-display').textContent = btn.fileName || '';
+  document.getElementById('btn-delete').style.display = btn.label ? 'block' : 'none';
+
+  // Icons
+  const iconPicker = document.getElementById('icon-picker');
+  iconPicker.innerHTML = '';
+  ICONS.forEach(ic => {
+    const span = document.createElement('span');
+    span.className = 'icon-option' + (ic === (btn.icon || '🔊') ? ' selected' : '');
+    span.textContent = ic;
+    span.onclick = () => { iconPicker.querySelectorAll('.icon-option').forEach(s => s.classList.remove('selected')); span.classList.add('selected'); };
+    iconPicker.appendChild(span);
+  });
+
+  // Colors
+  const colorPicker = document.getElementById('color-picker');
+  colorPicker.innerHTML = '';
+  COLORS.forEach(col => {
+    const swatch = document.createElement('div');
+    swatch.className = 'color-swatch' + (col === (btn.color || '#ff4d00') ? ' selected' : '');
+    swatch.style.background = col;
+    swatch.title = COLOR_NAMES[COLORS.indexOf(col)];
+    swatch.onclick = () => { colorPicker.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected')); swatch.classList.add('selected'); };
+    colorPicker.appendChild(swatch);
+  });
+
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  editingIndex = null;
+  editingAudioData = null;
+}
+
+function saveButton() {
+  const page = currentPage();
+  const label = document.getElementById('edit-label').value.trim();
+  if (!label) { showToast('Please add a label'); return; }
+
+  const icon = document.querySelector('#icon-picker .icon-option.selected')?.textContent || '🔊';
+  const color = document.querySelector('#color-picker .color-swatch.selected')?.style.background || '#ff4d00';
+  const existing = page.buttons[editingIndex] || {};
+
+  page.buttons[editingIndex] = {
+    label,
+    icon,
+    color: rgbToHex(color),
+    audioData: editingAudioData || existing.audioData || null,
+    fileName: document.getElementById('file-name-display').textContent || existing.fileName || ''
+  };
+
+  save();
+  render();
+  closeModal();
+  showToast('Button saved');
+}
+
+function deleteButton() {
+  if (editingIndex === null) return;
+  currentPage().buttons[editingIndex] = null;
+  save();
+  render();
+  closeModal();
+}
+
+// File handling
+const fileInput = document.getElementById('file-input');
+const fileDrop = document.getElementById('file-drop');
+
+fileInput.onchange = (e) => loadAudioFile(e.target.files[0]);
+
+fileDrop.ondragover = (e) => { e.preventDefault(); fileDrop.classList.add('dragover'); };
+fileDrop.ondragleave = () => fileDrop.classList.remove('dragover');
+fileDrop.ondrop = (e) => {
+  e.preventDefault();
+  fileDrop.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) loadAudioFile(file);
+};
+
+function loadAudioFile(file) {
+  if (!file || !file.type.startsWith('audio/')) {
+    showToast('Please drop an audio file');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    editingAudioData = e.target.result;
+    document.getElementById('file-name-display').textContent = file.name;
+    showToast('Audio loaded: ' + file.name);
+  };
+  reader.readAsDataURL(file);
+}
+
+// Context menu
+function showContextMenu(e, index) {
+  contextIndex = index;
+  const menu = document.getElementById('context-menu');
+  menu.style.left = e.clientX + 'px';
+  menu.style.top = e.clientY + 'px';
+  menu.classList.add('open');
+}
+
+function ctxEdit() {
+  hideContextMenu();
+  if (contextIndex !== null) openModal(contextIndex);
+}
+
+function ctxDelete() {
+  hideContextMenu();
+  if (contextIndex !== null) {
+    currentPage().buttons[contextIndex] = null;
+    save();
+    render();
+  }
+}
+
+function hideContextMenu() {
+  document.getElementById('context-menu').classList.remove('open');
+}
+
+document.addEventListener('click', hideContextMenu);
+
+// Pages
+function addPage() {
+  const name = prompt('Page name:', 'New Page');
+  if (!name) return;
+  const colors = ['#ff4d00','#2979ff','#00e676','#d500f9','#ffea00','#00e5ff','#ff4081'];
+  const color = colors[state.pages.length % colors.length];
+  state.pages.push({ id: Date.now(), name, color, buttons: Array(GRID_SIZE).fill(null) });
+  state.currentPage = state.pages.length - 1;
+  save();
+  render();
+}
+
+// Toast
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// Helpers
+function hexToRgb(hex) {
+  hex = hex.replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map(c=>c+c).join('');
+  const n = parseInt(hex, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function rgbToHex(rgb) {
+  if (rgb.startsWith('#')) return rgb;
+  const m = rgb.match(/\d+/g);
+  if (!m) return '#ff4d00';
+  return '#' + m.slice(0,3).map(x => parseInt(x).toString(16).padStart(2,'0')).join('');
+}
+
+// Close modal on overlay click
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+render();
+</script>
+</body>
+</html>
